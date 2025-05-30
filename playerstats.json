@@ -1,0 +1,20 @@
+[
+    {
+        "name": "joss",
+        "chips": 100,
+        "hands": 0,
+        "wins": 0,
+        "losses": 0,
+        "chip_won": 0,
+        "chip_lost": 0
+    },
+    {
+        "name": "sophie",
+        "chips": 100,
+        "hands": 0,
+        "wins": 0,
+        "losses": 0,
+        "chip_won": 0,
+        "chip_lost": 0
+    }
+]
