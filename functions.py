@@ -4,34 +4,32 @@ import json as j
 import random as r
 from playingcards import *
 
-# sets up initial decks for all tables
-deck1 = Deck()
-deck2 = Deck()
-deck3 = Deck()
-deck4 = Deck()
-deck1.shuffle()
-deck2.shuffle()
-deck3.shuffle()
-deck4.shuffle()
-
+# sets up initial stats
 player_stats = []
+table_stats = []
 
 # variables for outside data files
-stats_csv = 'playerstats.csv'
-stats_json = 'playerstats.json'
+t_stats_json = 'tablestats.json'
+p_stats_json = 'playerstats.json'
 dealer = 'dealerasciicards.csv'
 player = 'playerasciicards.csv'
 
 #trying to set up tables with a subclass for the nolimit table which is slightly different than the rest
 class Table():
-    def __init__(self, name, deck, bank, max_bet, min_bet, r17):
+    def __init__(self, name, bank, max_bet, min_bet, r17):
         """Sets up the table with deck to deal from, and other params for each."""
-        self.deck = deck
+        self.deck = Deck()
+        self.deck.shuffle()
         self.name = name
         self.bank = bank
         self.max = max_bet
         self.min = min_bet
         self.r17 = r17
+
+    def new_table(self):
+        "saves new table data to the save file"
+        table_stats.clear()
+        table_stats.append({'name': self.name, 'bank': self.bank, 'max_bet': self.max, 'min_bet': self.min, 'r17': self.r17})
 
     def new_deal(self):
         """for ever new hand this will occur"""
@@ -56,13 +54,11 @@ class Table():
             self.cards = [self.d_cards[0].img, self.d_cards[1].img1]
         elif len(self.d_cards) > 2:
             self.cards = [x.img for x in self.d_hand]
+            
         print("=" * 20 + "Dealer Cards" + "=" * 20)
         asciicards(dealer, *self.cards)
         print(f'Dealer score: {self.d_score}')        
-        if self.d_score > 21:
-            print(co.Fore.RED + co.Style.BRIGHT + 'Dealer Bust!\n' + co.Style.RESET_ALL)
-        elif len(self.d_cards) == 2 and self.d_score == 21:
-            print(co.Fore.GREEN + co.Style.BRIGHT + 'Dealar has Blackjack!' + co.Style.RESET_ALL)
+
 
     def player_hand(self):
         """ASCII display function for player's hand in each game"""
@@ -86,14 +82,7 @@ class Table():
                     if card.rank == 'Ace':
                         score += 1
                 else:    
-                    match card.rank:
-                        case 'Ace':
-                            score += 11
-                        case 'King' | 'Queen' | 'Jack':
-                            score += 10
-                        case _:
-                            score += card.value
-                
+                    score += card.value    
             return score
         else:
             score = 0
@@ -103,11 +92,12 @@ class Table():
             if len(self.d_cards) == 2:
                 match self.d_cards[0].rank:
                     case 'Ace':
-                        score += 11
+                        score1 += 11
                     case 'King' | 'Queen' | 'Jack':
-                        score +=10
+                        score1 +=10
                     case _:
-                        score += self.d_cards[0].value
+                        score1 += self.d_cards[0].value
+                score += score1
             elif len(self.d_cards) >2 :
                 for card in self.d_cards:
                     match card.rank:
@@ -119,25 +109,59 @@ class Table():
                             score += card.value
             return score
     
-
-    def hit(self, hand):
-        match hand:
-            case 'player':
+    def player_move(self, move):
+        match move:
+            case 'hit':
                 self.hand += self.deck.draw_n(1)
                 self.player_hand()
-            case 'dealer':
-                self.d_hand += self.deck.draw_n(1)
-                self.dealer_hand()
+            case 'stand':
+                self.player_hand()
+            
+    def dealer_ai(self):
+        if self.d_score == 21:
+            self.dealer_hand()
+            print(co.Fore.GREEN + co.Style.BRIGHT + 'Dealer has Blackjack!\n' + co.Style.RESET_ALL)
+            return
+        
+        match self.r17:
+            case 'hit':
+                while len(self.d_cards) < 5:
+                    if self.d_score <= 17:
+                        self.d_hand += self.deck.draw_n(1)
+                        print('Dealer hits!\n')
+                        self.dealer_hand()
+                    elif self.d_score >21:
+                        print(co.Fore.RED + co.Style.BRIGHT + 'Dealer Bust!\n' + co.Style.RESET_ALL)
+                        return
+                    else:
+                        print('Dealer stands.')
+                        return
+                      
+
+    def results(self, bet, d_score, p_score):
+        if p_score > d_score:
+            pass
+        elif p_score == d_score:
+            pass
+        else:
+            pass
+    
+    def update_stats(self, **kwargs):
+        for key, value in kwargs.items():
+            for x in table_stats[0]:
+                if self.name in x['name']:
+                    x[key] += value
+
                 
 
 
 class NoLimit(Table):
-    def __init__(self, name, deck, min_bet, r17):
+    def __init__(self, name, min_bet, r17):
         """sets up specific nolimit params"""
-        super().__init__(name, deck, None, None, 1, r17)
+        super().__init__(name, None, None, 1, r17)
         self.name = name
         self.min = min_bet
-        self.deck = deck
+        self.deck = Deck()
         self.r17 = r17
     
     def t_rules(self):
@@ -169,7 +193,7 @@ def asciicards(filename, *lists) -> str:
 
 
 # player class to hold player data
-class Player():
+class Player(Table):
     def __init__(self, name, chips=100, hands=0, wins=0, losses=0, chip_won=0, chip_lost=0):
         "sets up initial player stats, all default values are parsed in here"
         self.name = name
@@ -181,7 +205,8 @@ class Player():
         self.chip_lost = chip_lost
 
     def new_save(self):
-        "saves a new players data to the save file"
+        "saves new players data to the save file"
+        player_stats.clear()
         player_stats.append({'name': self.name, 'chips': self.chips, 'hands': self.hands, 'wins': self.wins, 'losses': self.losses, 'chip_won': self.chip_won, 'chip_lost': self.chip_lost})
     
     def update_stats(self, **kwargs):
@@ -189,8 +214,7 @@ class Player():
             for x in player_stats[0]:
                 if self.name in x['name']:
                     x[key] += value
-
-
+        
 
     # def read_stats(self):
     #     self.stats = f"""=====  Player Stats =====
@@ -199,11 +223,22 @@ class Player():
     #     Total hands played: ${self.}
     #     """
 
- 
+def save_tables():
+    with open(t_stats_json, 'w') as f:
+        j.dump(table_stats[0], f, indent=4)
+
+def load_tables():
+    try:
+        with open(t_stats_json, 'r') as f:
+            save = j.load(f)
+            table_stats.append(save)
+    except j.decoder.JSONDecodeError:
+        pass
+
 def load_stats():
     """without this function, saves will not be carried over between multiple playthroughs, this loads all data in at the start of each session"""
     try:
-        with open(stats_json, 'r') as f:
+        with open(p_stats_json, 'r') as f:
             save = j.load(f)
             player_stats.append(save)
     except j.decoder.JSONDecodeError:
@@ -211,31 +246,36 @@ def load_stats():
 
 def save_stats():
     """saves all stats of all currently saved players"""
-    with open(stats_json, 'w') as f:
-        j.dump(player_stats, f, indent=4)
+    with open(p_stats_json, 'w') as f:
+        j.dump(player_stats[0], f, indent=4)
 
-player1=Player('joss')
-player2=Player('sophie')
-load_stats()
+# player1=Player('joss')
+# load_stats()
 
-player1.update_stats(chips=1000,hands=1,)
-player2.update_stats(chips=2000)
-print(player_stats[0])
-player1.update_stats(chips=-1500,hands=4,wins=5)
-print(player_stats[0])
+# player1.update_stats(chips=1000,hands=1,)
+# print(player_stats[0][0])
+# save_stats()
 
 
-        
+low = Table("Low Roller's", 200, 20, 5, 'hit')
+mid = Table("Mid Roller's", 500, 50, 10, 'hit')
+high = Table("High Roller's", 1000, 100, 20, 'stand')
+nolimit = NoLimit('No Limit', 500, 'stand')
 
-# low = Table("Low Roller's", deck1, 200, 20, 5, 'hit')
-# mid = Table("Mid Roller's", deck2, 500, 50, 10, 'hit')
-# high = Table("High Roller's", deck3, 1000, 100, 20, 'stand')
-# nolimit = NoLimit('No Limit', deck4, 500, 'stand')
 
-# low.new_deal()
 
-# low.player_hand()
+# load_tables()
+# print(table_stats[0][0])
+# low.update_stats(bank=100)
+# print(table_stats[0][0])
+# save_tables()
+low.new_deal()
+
+low.player_hand()
+low.player_move('hit')
+low.player_move('hit')
 # low.dealer_hand()
+# low.dealer_ai()
 
 # low.hit('player')
 # low.hit('dealer')

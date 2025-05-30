@@ -1,0 +1,30 @@
+[
+    {
+        "name": "Low Roller's",
+        "bank": 200,
+        "max_bet": 20,
+        "min_bet": 5,
+        "r17": "hit"
+    },
+    {
+        "name": "Mid Roller's",
+        "bank": 500,
+        "max_bet": 50,
+        "min_bet": 10,
+        "r17": "hit"
+    },
+    {
+        "name": "High Roller's",
+        "bank": 1000,
+        "max_bet": 100,
+        "min_bet": 20,
+        "r17": "stand"
+    },
+    {
+        "name": "No Limit",
+        "bank": null,
+        "max_bet": null,
+        "min_bet": 500,
+        "r17": "stand"
+    }
+]
